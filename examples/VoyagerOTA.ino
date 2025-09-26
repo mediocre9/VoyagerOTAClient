@@ -3,7 +3,7 @@
 
 using namespace Voyager;
 
-void connectToInternet() {
+void connectToWifi() {
     WiFi.begin("SSID", "PASSWORD");
     while (WiFi.status() != WL_CONNECTED) {
         Serial.print(".");
@@ -14,14 +14,11 @@ void connectToInternet() {
 
 void setup() {
     Serial.begin(9600);
-    connectToInternet();
+    connectToWifi();
     OTA<> ota("1.0.0");
 
     ota.setEnvironment(PRODUCTION);
-    ota.setGlobalHeaders({
-        {"X-API-Key", "voyager-api-key-here..."},
-        {"X-Project-Id", "voyager-project-id"},
-    });
+    ota.setCredentials("voyager-api-key-here...", "voyager-project-id-here....");
 
     auto release = ota.fetchLatestRelease();
 
@@ -30,7 +27,7 @@ void setup() {
         Serial.println("Changelog: " + release->changeLog);
         ota.performUpdate();
     } else {
-        Serial.println("No update available");
+        Serial.println("No updates available");
     }
 }
 

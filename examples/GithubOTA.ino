@@ -3,7 +3,7 @@
 
 using namespace Voyager;
 
-void connectToInternet() {
+void connectToWifi() {
     WiFi.begin("SSID", "PASSWORD");
     while (WiFi.status() != WL_CONNECTED) {
         Serial.print(".");
@@ -14,12 +14,13 @@ void connectToInternet() {
 
 void setup() {
     Serial.begin(9600);
-    connectToInternet();
+    connectToWifi();
 
     std::unique_ptr<GithubJSONParser> parser = std::make_unique<GithubJSONParser>();
     OTA<HTTPResponseData, GithubReleaseModel> ota(std::move(parser), "1.0.0");
 
-    ota.setReleaseURL("https://api.github.com/repos/owner/repo/releases/latest",
+    // https://docs.github.com/en/rest/releases/releases?apiVersion=2022-11-28#:~:text=GET-,/repos/%7Bowner%7D/%7Brepo%7D/releases,-cURL
+    ota.setReleaseURL("https://api.github.com/repos/{owner}/{repo}/releases",
                       {
                           {"Authorization", "Bearer your-github-token"},
                           {"X-GitHub-Api-Version", "2022-11-28"},
