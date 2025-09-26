@@ -18,7 +18,7 @@ void setup() {
     OTA<> ota("1.0.0");
 
     ota.setEnvironment(PRODUCTION);
-    ota.setCredentials("voyager-api-key-here...", "voyager-project-id-here....");
+    ota.setCredentials("voyager-project-id-here....", "voyager-api-key-here...");
 
     auto release = ota.fetchLatestRelease();
 
