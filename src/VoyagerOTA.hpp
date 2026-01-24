@@ -318,7 +318,7 @@ std::optional<T_PayloadModel> Voyager::OTA<T_ResponseData, T_PayloadModel>::fetc
         return std::nullopt;
     }
   #if __ENABLE_DEVELOPMENT_MODE__
-    url = __VoyagerApi__::BASE_URL + __VoyagerApi__::Endpoints::LATEST_RELEASE + __VoyagerApi__::QueryParams::PRODUCTION_CHANNEL;
+    url = __VoyagerApi__::BASE_URL + __VoyagerApi__::Endpoints::LATEST_RELEASE + __VoyagerApi__::QueryParams::STAGING_CHANNEL;
   #else
     url = __VoyagerApi__::BASE_URL + __VoyagerApi__::Endpoints::LATEST_RELEASE + __VoyagerApi__::QueryParams::PRODUCTION_CHANNEL;
   #endif
@@ -390,7 +390,7 @@ std::optional<Voyager::VoyagerReleaseModel> Voyager::VoyagerJSONParser::parse(Vo
     if (statusCode != HTTP_CODE_OK) {
         String errorMessage = document["message"];
         Serial.println(errorMessage);
-        std::nullopt;
+        return std::nullopt;
     }
 
     Voyager::VoyagerReleaseModel payload(document["release"]["version"],
