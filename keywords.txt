@@ -1,21 +1,16 @@
-VoyagerReleaseModel	KEYWORD1
-GithubReleaseModel	KEYWORD1
-Environment	KEYWORD1
-IParser	KEYWORD1
-VoyagerJSONParser	KEYWORD1
-GithubJSONParser	KEYWORD1
 BaseOTA	KEYWORD1
 OTA	KEYWORD1
+IParser	KEYWORD1
+VoyagerJSONParser	KEYWORD1
+VoyagerReleaseModel	KEYWORD1
+BaseModel	KEYWORD1
 
 # For Methods...
-setParser	KEYWORD2
-setReleaseURL	KEYWORD2
-setDownloadURL	KEYWORD2
 setCurrentVersion	KEYWORD2
-setGlobalHeaders	KEYWORD2
-setEnvironment	KEYWORD2
-getCurrentVersion	KEYWORD2
-isNewVersion	KEYWORD2
-performUpdate	KEYWORD2
 fetchLatestRelease	KEYWORD2
-
+performUpdate	KEYWORD2
+setParser	KEYWORD2
+setCredentials	KEYWORD2
+setDownloadURL	KEYWORD2
+isNewVersion	KEYWORD2
+isCurrentVersion	KEYWORD2
