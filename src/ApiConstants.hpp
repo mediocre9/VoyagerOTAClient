@@ -4,8 +4,7 @@ namespace __VoyagerApi__ {
     String BASE_URL = "https://staging.api.voyagerota.com";
 
     namespace Endpoints {
-        String LATEST_RELEASE = "/api/v1/releases/latest";
-        // namespace QueryParams
+        String LATEST_RELEASE = "/internal/api/v1/releases/latest";
     }  // namespace Endpoints
     namespace QueryParams {
         String PRODUCTION_CHANNEL = "?channel=production";
@@ -17,5 +16,4 @@ namespace __VoyagerApi__ {
             constexpr const char* X_PROJECT_ID = "x-project-id";
         }  // namespace Keys
     }  // namespace Headers
-
 }  // namespace __VoyagerApi__
