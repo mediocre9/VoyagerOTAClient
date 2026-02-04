@@ -54,10 +54,10 @@
   #error VoyagerOTA requires the ArduinoJson library version 7.0 or above.
 #endif
 
-#define VOYAGER_OTA_VERSION "2.1.0"
+#define VOYAGER_OTA_VERSION "2.1.1"
 #define VOYAGER_OTA_VERSION_MAJOR 2
 #define VOYAGER_OTA_VERSION_MINOR 1
-#define VOYAGER_OTA_VERSION_PATCH 0
+#define VOYAGER_OTA_VERSION_PATCH 1
 
 // !Do NOT change....For Platform's Backend use only......
 #if defined(__ENABLE_ADVANCED_MODE__) && (__ENABLE_ADVANCED_MODE__ == true)
@@ -398,7 +398,7 @@ std::optional<Voyager::VoyagerReleaseModel> Voyager::VoyagerJSONParser::parse(Vo
     if (statusCode != HTTP_CODE_OK) {
         String errorMessage = document["message"];
         Serial.println(errorMessage);
-        std::nullopt;
+        return std::nullopt;
     }
 
     Voyager::VoyagerReleaseModel payload(document["release"]["version"],
