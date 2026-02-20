@@ -2,7 +2,9 @@ BaseOTA	KEYWORD1
 OTA	KEYWORD1
 IParser	KEYWORD1
 VoyagerJSONParser	KEYWORD1
+GithubJSONParser    KEYWORD1
 VoyagerReleaseModel	KEYWORD1
+GithubReleaseModel  KEYWORD1
 BaseModel	KEYWORD1
 
 # For Methods...
@@ -12,5 +14,7 @@ performUpdate	KEYWORD2
 setParser	KEYWORD2
 setCredentials	KEYWORD2
 setDownloadURL	KEYWORD2
+setReleaseURL   KEYWORD2
 isNewVersion	KEYWORD2
 isCurrentVersion	KEYWORD2
+attachEventCallbacks KEYWORD2
