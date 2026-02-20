@@ -1,10 +1,10 @@
-# VoyagerOTA Client
+# Voyager OTA Client
 
-> An easy to use small OTA client library for the VoyagerOTA platform, compatible with ESP32 and ESP8266 devices.
+> An OTA client library for the VoyagerOTA platform, compatible with ESP32 and ESP8266 devices.
 
-## Usage
+# #Getting Started
 
-### VoyagerOTA:
+> ### Quick Start (VoyagerOTA):
 
 ```cpp
 // Development mode is for for staging environment builds for testing....
@@ -47,8 +47,11 @@ void setup() {
 
 void loop() {}
 ```
-
-### Github Release OTA:
+---
+## Advanced Mode 
+> [!NOTE]
+> Advanced Mode `__ENABLE_ADVANCED_MODE__` compile time flag allows custom parsers and custom backends. Voyager-specific features are disabled in this mode.
+### 1. Github Release OTA:
 ```cpp
 
 // required to enable more manual settings and disable voyager related features....
@@ -100,7 +103,7 @@ void setup() {
             {"Accept", "application/octet-stream"},
         };
 
-        ota.setDownloadURL(release->browserDownloadUrl, downloadHeaders);
+        ota.setDownloadURL(release->downloadURL, downloadHeaders);
         ota.performUpdate();
     } else {
         Serial.println("No updates available yet!");
@@ -109,13 +112,65 @@ void setup() {
 
 void loop() {}
 ```
+---
+### 2. Custom Backend Support
+> [!NOTE]
+> Custom parsers allow integration with any backend. **All models must extend BaseModel.**
 
+```cpp
+#define __ENABLE_ADVANCED_MODE__ true
+#define CURRENT_FIRMWARE_VERSION "1.0.0"
+
+#include <VoyagerOTA.hpp>
+
+struct CustomPayload : public Voyager::BaseModel {
+    String description;
+    int statusCode;
+};
+
+class CustomParser : public Voyager::IParser<Voyager::HTTPResponseData, CustomPayload> {
+public:
+    std::optional<CustomPayload> parse(Voyager::HTTPResponseData responseData, int statusCode) override {
+        ArduinoJson::JsonDocument document;
+        ArduinoJson::DeserializationError error = ArduinoJson::deserializeJson(document, responseData);
+
+        if (error) {
+            Serial.println("JSON parsing failed");
+            return std::nullopt;
+        }
+
+        if (statusCode != HTTP_CODE_OK) {             
+            return std::nullopt;
+        }
+
+        CustomPayload payload(document["version"],
+                              document["description"],
+                              document["downloadUrl"],
+                              statusCode);
+
+        return payload;
+    }
+};
+
+void setup() {
+    Serial.begin(9600);
+    auto parser = std::make_unique<CustomParser>();
+    Voyager::OTA<Voyager::HTTPResponseData, CustomPayload> ota(std::move(parser), CURRENT_FIRMWARE_VERSION);
+
+    ota.setReleaseURL("https://api.hack-nasa-backend.com/firmware/latest");
+    auto release = ota.fetchLatestRelease();
+    if (release && ota.isNewVersion(release->version)) {
+        ota.setDownloadURL(release->downloadURL);
+        ota.performUpdate();
+    }
+}
+
+void loop() {}
+```
 ## Requirements
 
 - C++17 or higher
 - ArduinoJson library version 7.0 or above
-- ESP32/ESP8266 Arduino framework
-- [cpp-semver](http://github.com/z4kn4fein/cpp-semver)
-- [HTTPUpdate](https://github.com/espressif/arduino-esp32/tree/master/libraries/Update)
+- [cpp-semver](http://github.com/z4kn4fein/cpp-semver) - v0.4.0
+- [HTTPUpdate](https://github.com/espressif/arduino-esp32/tree/master/libraries/Update) - v3.0.7
 
-## Documentation: [VoyagerOTA Docs](https://staging.api.voyagerota.com/docs)
