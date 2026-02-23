@@ -54,10 +54,10 @@
   #error VoyagerOTA requires the ArduinoJson library version 7.0 or above.
 #endif
 
-#define VOYAGER_OTA_VERSION "3.0.0"
+#define VOYAGER_OTA_VERSION "3.0.1"
 #define VOYAGER_OTA_VERSION_MAJOR 3
 #define VOYAGER_OTA_VERSION_MINOR 0
-#define VOYAGER_OTA_VERSION_PATCH 0
+#define VOYAGER_OTA_VERSION_PATCH 1
 
 // !Do NOT change....For Platform's Backend use only......
 #if defined(__ENABLE_ADVANCED_MODE__) && (__ENABLE_ADVANCED_MODE__ == true)
