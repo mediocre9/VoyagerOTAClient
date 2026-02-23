@@ -43,8 +43,8 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <semver.hpp>
 #include <vector>
+#include "semver/semver.hpp"
 
 #if !__ENABLE_ADVANCED_MODE__
   #include "ApiConstants.hpp"
