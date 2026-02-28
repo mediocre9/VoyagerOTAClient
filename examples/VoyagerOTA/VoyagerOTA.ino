@@ -6,8 +6,8 @@
 #define __ENABLE_DEVELOPMENT_MODE__ true
 #define CURRENT_FIRMWARE_VERSION "1.0.0"
 
+#include <VoyagerOTAClient.h>
 #include <WiFi.h>
-#include <VoyagerOTA.hpp>
 using namespace Voyager;
 
 void connectToWifi() {
@@ -22,7 +22,7 @@ void connectToWifi() {
 void setup() {
     Serial.begin(9600);
     connectToWifi();
-    OTA<> ota(CURRENT_FIRMWARE_VERSION);
+    OTA<HTTPResponseData, VoyagerReleaseModel> ota(CURRENT_FIRMWARE_VERSION);
 
     ota.setCredentials("voyager-project-id-here....", "voyager-api-key-here...");
     ota.setBaseURL("voyager-base-url.....");
