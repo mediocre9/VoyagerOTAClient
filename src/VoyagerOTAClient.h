@@ -1,13 +1,13 @@
 /******************************************************************************
  * MIT License
  *
- * @headerfile [VoyagerOTA.hpp]
+ * @headerfile [VoyagerOTAClient.h]
  *
- * @description: An easy to use small OTA client library for the VoyagerOTA
- * platform, compatible with ESP32 and ESP8266 devices.
+ * @description: A SemVer based OTA client library. Supports GitHub releases,
+ * VoyagerOTA platform, and any custom JSON backend via custom parsers.
  *
  * @copyright (c) 2025
- * @author: fahadziakhan9@gmail.com (Fahad Zia Khan / Mediocre9)
+ * @author: Fahad Zia Khan - Mediocre9
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,8 +28,8 @@
  * SOFTWARE.
  *****************************************************************************/
 
-#ifndef MEDIOCRE9_VOYAGER_OTA_H
-#define MEDIOCRE9_VOYAGER_OTA_H
+#ifndef MEDIOCRE9_VOYAGER_OTA_CLIENT_H
+#define MEDIOCRE9_VOYAGER_OTA_CLIENT_H
 
 #if __cplusplus < 201703L
   #error "This library requires a compiler of C++17 or above."
@@ -47,17 +47,17 @@
 #include "semver/semver.hpp"
 
 #if !__ENABLE_ADVANCED_MODE__
-  #include "ApiConstants.hpp"
+  #include "ApiConstants.h"
 #endif
 
 #if !defined(ARDUINOJSON_VERSION_MAJOR) || ARDUINOJSON_VERSION_MAJOR < 7
-  #error VoyagerOTA requires the ArduinoJson library version 7.0 or above.
+  #error VoyagerOTAClient requires the ArduinoJson library version 7.0 or above.
 #endif
 
-#define VOYAGER_OTA_VERSION "3.0.1"
-#define VOYAGER_OTA_VERSION_MAJOR 3
-#define VOYAGER_OTA_VERSION_MINOR 0
-#define VOYAGER_OTA_VERSION_PATCH 1
+#define VOYAGER_OTA_CLIENT_VERSION "4.0.0"
+#define VOYAGER_OTA_CLIENT_VERSION_MAJOR 4
+#define VOYAGER_OTA_CLIENT_VERSION_MINOR 0
+#define VOYAGER_OTA_CLIENT_VERSION_PATCH 0
 
 // !Do NOT change....For Platform's Backend use only......
 #if defined(__ENABLE_ADVANCED_MODE__) && (__ENABLE_ADVANCED_MODE__ == true)
@@ -94,21 +94,7 @@ namespace Voyager {
 
     BaseModel::~BaseModel() {}
 
-#if __ENABLE_ADVANCED_MODE__
-    struct GithubReleaseModel : public BaseModel {
-        String name;
-        String publishedAt;
-        int size;
-        int statusCode;
-
-        explicit GithubReleaseModel(String version, String name, String publishedAt, String downloadURL, int size, int statusCode) : BaseModel(version, downloadURL) {
-            this->name = name;
-            this->publishedAt = publishedAt;
-            this->size = size;
-            this->statusCode = statusCode;
-        }
-    };
-#else
+#if !__ENABLE_ADVANCED_MODE__
     struct VoyagerReleaseModel final : public BaseModel {
         String releaseId;
         String changeLog;
@@ -135,7 +121,7 @@ namespace Voyager {
 #endif
 
     using HTTPResponseData = String;
-    template <typename T_ResponseData = Voyager::HTTPResponseData, typename T_PayloadModel = Voyager::VoyagerReleaseModel>
+    template <typename T_ResponseData = Voyager::HTTPResponseData, typename T_PayloadModel = Voyager::BaseModel>
     class IParser {
         static_assert(std::is_base_of_v<BaseModel, T_PayloadModel>, "T_PayloadModel should be extended from BaseModel!");
 
@@ -145,14 +131,7 @@ namespace Voyager {
         virtual ~IParser() = default;
     };
 
-#if __ENABLE_ADVANCED_MODE__
-    class GithubJSONParser final : public Voyager::IParser<Voyager::HTTPResponseData, GithubReleaseModel> {
-    public:
-        GithubJSONParser() = default;
-
-        [[nodiscard]] std::optional<GithubReleaseModel> parse(Voyager::HTTPResponseData responseData, int statusCode) override;
-    };
-#else
+#if !__ENABLE_ADVANCED_MODE__
     class VoyagerJSONParser final : public IParser<Voyager::HTTPResponseData, Voyager::VoyagerReleaseModel> {
     public:
         VoyagerJSONParser() = default;
@@ -173,7 +152,7 @@ namespace Voyager {
         virtual ~BaseOTA() = default;
     };
 
-    template <typename T_ResponseData = Voyager::HTTPResponseData, typename T_PayloadModel = Voyager::VoyagerReleaseModel>
+    template <typename T_ResponseData, typename T_PayloadModel = Voyager::BaseModel>
     class OTA : public BaseOTA<T_PayloadModel> {
         static_assert(std::is_base_of_v<BaseModel, T_PayloadModel>, "Model should be extended from BaseModel!");
 
@@ -182,21 +161,19 @@ namespace Voyager {
 
         OTA() = default;
 
-        explicit OTA(const String& currentVersion);
-
+#if __ENABLE_ADVANCED_MODE__
         explicit OTA(const String& currentVersion, Parser parser);
 
-        explicit OTA(Parser parser);
-
-        void setParser(Parser parser);
-
-#if __ENABLE_ADVANCED_MODE__
         void setReleaseURL(const String& endpoint, const std::vector<Header> headers = std::vector<Header>());
 #else
+        explicit OTA(const String& currentVersion);
+
         void setCredentials(const String& projectId, const String& apiKey);
 
         void setBaseURL(const String& url);
 #endif
+        void setParser(Parser parser);
+
         void attachEventCallbacks(HTTPUpdateStartCB onStart,
                                   HTTPUpdateProgressCB onProgress,
                                   HTTPUpdateEndCB onEnd,
@@ -260,34 +237,23 @@ namespace Voyager {
     }  // namespace HttpClientHelper
 }  // namespace Voyager
 
-template <typename T_ResponseData, typename T_PayloadModel>
-Voyager::OTA<T_ResponseData, T_PayloadModel>::OTA(const String& currentVersion)
-    : _currentVersion(currentVersion) {
-    _parser = std::make_unique<VoyagerJSONParser>();
-}
-
+#if __ENABLE_ADVANCED_MODE__
 template <typename T_ResponseData, typename T_PayloadModel>
 Voyager::OTA<T_ResponseData, T_PayloadModel>::OTA(const String& currentVersion, Parser parser)
     : _currentVersion(currentVersion), _parser(std::move(parser)) {}
 
-template <typename T_ResponseData, typename T_PayloadModel>
-Voyager::OTA<T_ResponseData, T_PayloadModel>::OTA(Parser parser)
-    : _parser(std::move(parser)) {}
-
-template <typename T_ResponseData, typename T_PayloadModel>
-void Voyager::OTA<T_ResponseData, T_PayloadModel>::setParser(Parser parser) {
-    if (_parser == nullptr) {
-        _parser = std::move(parser);
-    }
-}
-
-#if __ENABLE_ADVANCED_MODE__
 template <typename T_ResponseData, typename T_PayloadModel>
 void Voyager::OTA<T_ResponseData, T_PayloadModel>::setReleaseURL(const String& endpoint, std::vector<Header> headers) {
     _releaseURL = endpoint;
     _releaseHeaders = headers;
 }
 #else
+template <typename T_ResponseData, typename T_PayloadModel>
+Voyager::OTA<T_ResponseData, T_PayloadModel>::OTA(const String& currentVersion)
+    : _currentVersion(currentVersion) {
+    _parser = std::make_unique<VoyagerJSONParser>();
+}
+
 template <typename T_ResponseData, typename T_PayloadModel>
 void Voyager::OTA<T_ResponseData, T_PayloadModel>::setCredentials(const String& projectId, const String& apiKey) {
     _projectId = projectId;
@@ -308,6 +274,13 @@ void Voyager::OTA<T_ResponseData, T_PayloadModel>::setBaseURL(const String& url)
     _baseURL = url;
 }
 #endif
+
+template <typename T_ResponseData, typename T_PayloadModel>
+void Voyager::OTA<T_ResponseData, T_PayloadModel>::setParser(Parser parser) {
+    if (_parser == nullptr) {
+        _parser = std::move(parser);
+    }
+}
 
 template <typename T_ResponseData, typename T_PayloadModel>
 void Voyager::OTA<T_ResponseData, T_PayloadModel>::setDownloadURL(const String& endpoint, std::vector<Header> headers) {
@@ -403,32 +376,7 @@ std::optional<T_PayloadModel> Voyager::OTA<T_ResponseData, T_PayloadModel>::fetc
     return _parser->parse(responseData, statusCode);
 }
 
-#if __ENABLE_ADVANCED_MODE__
-std::optional<Voyager::GithubReleaseModel> Voyager::GithubJSONParser::parse(Voyager::HTTPResponseData responseData, int statusCode) {
-    JsonDocument document;
-    DeserializationError error = deserializeJson(document, responseData);
-
-    if (error) {
-        Serial.printf("VoyagerOTA JSON Error : %s\n", error.c_str());
-        return std::nullopt;
-    }
-
-    // TODO Add error log message...
-    if (statusCode != HTTP_CODE_OK) {
-        return std::nullopt;
-    }
-
-    GithubReleaseModel payload(
-        document["tag_name"],
-        document["name"],
-        document["published_at"],
-        document["assets"][0]["url"],
-        document["assets"][0]["size"].template as<int>(),
-        statusCode);
-
-    return payload;
-}
-#else
+#if !__ENABLE_ADVANCED_MODE__
 std::optional<Voyager::VoyagerReleaseModel> Voyager::VoyagerJSONParser::parse(Voyager::HTTPResponseData responseData, int statusCode) {
     JsonDocument document;
     DeserializationError error = deserializeJson(document, responseData);
@@ -474,7 +422,11 @@ void Voyager::OTA<T_ResponseData, T_PayloadModel>::performUpdate() {
         return;
     }
 
-    std::vector<Header> headers = _voyagerHeaders.empty() ? _downloadHeaders : _voyagerHeaders;
+#if __ENABLE_ADVANCED_MODE__
+    std::vector<Header> headers = _downloadHeaders;
+#else
+    std::vector<Header> headers = _voyagerHeaders;
+#endif
     HttpClientHelper::addHttpClientHeaders(client, headers);
 
     _otaUpdateHandler(client);
