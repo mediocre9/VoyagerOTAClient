@@ -1,40 +1,41 @@
 # VoyagerOTAClient
 
-A semver based ESP32 OTA client library for the VoyagerOTA platform. Supports GitHub releases and any custom backend via custom parsers.
+A semver based OTA client helper library for the VoyagerOTA platform. Supports GitHub releases and any custom JSON backends via custom parsers for ESP32.
 
 ## Features
 
-- [x] Semver based version update
+- [x] Semver based version comparison
 - [x] VoyagerOTA platform integration
-- [x] Custom parser support for any backend
+- [x] Custom parser support for any JSON backend
 
 ---
 
 ## Getting Started
 
-### Feature Methods Availability
+### Available Methods
 
 | Method                                                                                                                               | Voyager Mode | Advanced Mode |
 | ------------------------------------------------------------------------------------------------------------------------------------ | :----------: | :-----------: |
-| `performUpdate()`                                                                                                                    |      ✅      |      ✅       |
-| `fetchLatestRelease()`                                                                                                               |      ✅      |      ✅       |
-| `setParser(Parser parser)`                                                                                                           |      ✅      |      ✅       |
-| `attachEventCallbacks(HTTPUpdateStartCB onStart, HTTPUpdateProgressCB onProgress, HTTPUpdateEndCB onEnd, HTTPUpdateErrorCB onError)` |      ✅      |      ✅       |
-| `setDownloadURL(const String& endpoint, std::vector<Header> headers = {})`                                                           |      ✅      |      ✅       |
-| `setCurrentVersion(const String& currentVersion)`                                                                                    |      ✅      |      ✅       |
-| `getCurrentVersion() const`                                                                                                          |      ✅      |      ✅       |
-| `isNewVersion(const String& release)`                                                                                                |      ✅      |      ✅       |
-| `isUpToDate(const String& release)`                                                                                                  |      ✅      |      ✅       |
-| `setCredentials(const String& projectId, const String& apiKey)`                                                                      |      ✅      |      ❌       |
-| `setBaseURL(const String& url)`                                                                                                      |      ✅      |      ❌       |
-| `setReleaseURL(const String& endpoint, const std::vector<Header> headers = {})`                                                      |      ❌      |      ✅       |
+| `performUpdate()`                                                                                                                    |      Yes     |      Yes      |
+| `fetchLatestRelease()`                                                                                                               |      Yes     |      Yes      |
+| `setParser(Parser parser)`                                                                                                           |      Yes     |      Yes      |
+| `attachEventCallbacks(HTTPUpdateStartCB onStart, HTTPUpdateProgressCB onProgress, HTTPUpdateEndCB onEnd, HTTPUpdateErrorCB onError)` |      Yes     |      Yes      |
+| `setDownloadURL(const String& endpoint, std::vector<Header> headers = {})`                                                           |      Yes     |      Yes      |
+| `setCurrentVersion(const String& currentVersion)`                                                                                    |      Yes     |      Yes      |
+| `getCurrentVersion() const`                                                                                                          |      Yes     |      Yes      |
+| `isNewVersion(const String& release)`                                                                                                |      Yes     |      Yes      |
+| `isUpToDate(const String& release)`                                                                                                  |      Yes     |      Yes      |
+| `setCredentials(const String& projectId, const String& apiKey)`                                                                      |      Yes     |       No      |
+| `setBaseURL(const String& url)`                                                                                                      |      Yes     |       No      |
+| `setReleaseURL(const String& endpoint, const std::vector<Header> headers = {})`                                                      |      No      |      Yes      |
+
 
 ### Quick Start (VoyagerOTA)
 
 > [!IMPORTANT]
 >
 > 1. The `__ENABLE_DEVELOPMENT_MODE__` must be declared at the top either as true or false. As this compile time flag is required only for VoyagerOTA platform.
-> 2. Firmware uploaded to VoyagerOTA must be built with `__ENABLE_DEVELOPMENT_MODE__` false. Development enabled builds will be rejected by the VoyagerOTA platform.
+> 2. Firmware uploaded to VoyagerOTA must be built with `__ENABLE_DEVELOPMENT_MODE__` false. Development compiled builds will be rejected by the VoyagerOTA platform.
 > 3. The library uses staging and production channels. Production builds first go to the **staging** channel for testing.
 > 4. On your local device, you can temporarily set `__ENABLE_DEVELOPMENT_MODE__` true to fetch the **staging** release.
 > 5. After testing, promote the release to **production** to make it available to all devices.
@@ -89,13 +90,15 @@ void loop() {}
 ## Advanced Mode
 
 > [!NOTE]
-> `__ENABLE_ADVANCED_MODE__` compile time flag allows Custom backend support with parsers for integration with any backend.
+> `__ENABLE_ADVANCED_MODE__` compile time flag must be set to `true` to enable custom backend support with parsers for integration with any backend.
 > **All custom payload models must extend BaseModel.**
-> The library requires each model to have at least:
+> Each model inherits the following required fields from BaseModel:
 >
-> - _version_ - the release version string for semver comparison.
-> - _downloadURL_ - the URL of the firmware binary to download.
->   **Voyager-specific features are disabled in this mode!**
+> * *version* - the release version string used for semver comparison.
+> * *downloadURL* - the URL of the firmware binary to download.
+>
+> **Voyager-specific features are disabled in this mode!!!**
+
 
 ### 1. Custom OTA Backend Support Example
 
@@ -234,7 +237,7 @@ void setup() {
 
     auto parser = std::make_unique<GithubJSONParser>();
     OTA<HTTPResponseData, GithubReleaseModel> ota(CURRENT_FIRMWARE_VERSION, std::move(parser));
-
+      
     // https://docs.github.com/en/rest/releases/releases?apiVersion=2022-11-28#:~:text=GET-,/repos/%7Bowner%7D/%7Brepo%7D/releases,-cURL
     std::vector<Header> releaseHeaders = {
         {"Authorization", "Bearer your-github-token"},
