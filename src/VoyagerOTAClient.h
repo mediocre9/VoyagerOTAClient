@@ -54,8 +54,8 @@
   #error VoyagerOTAClient requires the ArduinoJson library version 7.0 or above.
 #endif
 
-#define VOYAGER_OTA_CLIENT_VERSION "4.0.0"
-#define VOYAGER_OTA_CLIENT_VERSION_MAJOR 4
+#define VOYAGER_OTA_CLIENT_VERSION "5.0.0"
+#define VOYAGER_OTA_CLIENT_VERSION_MAJOR 5
 #define VOYAGER_OTA_CLIENT_VERSION_MINOR 0
 #define VOYAGER_OTA_CLIENT_VERSION_PATCH 0
 
@@ -63,14 +63,14 @@
 #if defined(__ENABLE_ADVANCED_MODE__) && (__ENABLE_ADVANCED_MODE__ == true)
   #pragma message("VoyagerOTA Advanced Mode Enabled! All VoyagerOTA related features has been disabled!")
 #else
-  #if !defined(__ENABLE_DEVELOPMENT_MODE__) && (__ENABLE_DEVELOPMENT_MODE__ == false)
-    #error __ENABLE_DEVELOPMENT_MODE__ MACRO is missing. Please define at the top of the code either as true or false.
+  #if !defined(__USE_STAGING_CHANNEL__) && (__USE_STAGING_CHANNEL__ == false)
+    #error __USE_STAGING_CHANNEL__ MACRO is missing. Please define at the top of the code either as true or false.
   #endif
 
     //   https://stackoverflow.com/questions/31637626/whats-the-usecase-of-gccs-used-attribute#:~:text=If%20you%20declare%20a%20global%20variable%20or%20function%20that%20is%20unused%2C%20gcc%20will%20optimized%20it%20out%20(with%20warning)%2C%20but%20if%20you%20declared%20the%20global%20variable%20or%20the%20function%20with%20%27__attribute__((used))%27%2C%20gcc%20will%20include%20it%20in%20object%20file%20(and%20linked%20executable).
-  #if __ENABLE_DEVELOPMENT_MODE__
-const char* ___VYGR_DEVELOPMENT___ __attribute__((used)) = "$2y$10$BsbB6jZbeQKLLnsnvGRJfOmGuG2Co0/LEDR4xO0Khnlvvm57c6Tai";
-    #pragma message("[VoyagerOTA-WARNING]: Do not Upload DEVELOPMENT enabled builds on VoyagerOTA Platform.");
+  #if __USE_STAGING_CHANNEL__
+const char* ___VYGR_STAGING___ __attribute__((used)) = "$2y$10$BsbB6jZbeQKLLnsnvGRJfOmGuG2Co0/LEDR4xO0Khnlvvm57c6Tai";
+    #pragma message("[VoyagerOTA-WARNING]: Do not Upload STAGING enabled builds on VoyagerOTA Platform.");
   #else
 const char* ___VYGR_PRODUCTION___ __attribute__((used)) = "$2y$10$DX0bqDwfQtWJkBPgiXHVqOcbjOoX5i9cRHxSTgK3xgjTHpy5EGNbO";
   #endif
@@ -346,7 +346,7 @@ std::optional<T_PayloadModel> Voyager::OTA<T_ResponseData, T_PayloadModel>::fetc
         return std::nullopt;
     }
 
-  #if __ENABLE_DEVELOPMENT_MODE__
+  #if __USE_STAGING_CHANNEL__
     url = _baseURL + __VoyagerApi__::Endpoints::LATEST_RELEASE + __VoyagerApi__::QueryParams::STAGING_CHANNEL;
   #else
     url = _baseURL + __VoyagerApi__::Endpoints::LATEST_RELEASE + __VoyagerApi__::QueryParams::PRODUCTION_CHANNEL;
