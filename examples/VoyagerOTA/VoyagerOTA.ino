@@ -3,7 +3,7 @@
 // Make sure to always disable the [__USE_STAGING_CHANNEL__] flag to false
 // while uploading the Binary to VoyagerOTA Platform as staging builds are not
 // allowed....And by disabling it the build is treated as production build...
-#define __ENABLE_DEVELOPMENT_MODE__ true
+#define __USE_STAGING_CHANNEL__ true
 #define CURRENT_FIRMWARE_VERSION "1.0.0"
 
 #include <VoyagerOTAClient.h>
