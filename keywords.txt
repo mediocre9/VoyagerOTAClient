@@ -2,9 +2,7 @@ BaseOTA	            KEYWORD1
 OTA	                KEYWORD1
 IParser	            KEYWORD1
 VoyagerJSONParser	KEYWORD1
-GithubJSONParser    KEYWORD1
 VoyagerReleaseModel	KEYWORD1
-GithubReleaseModel  KEYWORD1
 BaseModel	        KEYWORD1
 
 # For Methods...
