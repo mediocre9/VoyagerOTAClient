@@ -12,23 +12,6 @@ A semver based OTA client helper library for the VoyagerOTA platform. Supports G
 
 ## Getting Started
 
-### Available Methods
-
-| Method                                                                                                                               | Voyager Mode | Advanced Mode |
-| ------------------------------------------------------------------------------------------------------------------------------------ | :----------: | :-----------: |
-| `performUpdate()`                                                                                                                    |     Yes      |      Yes      |
-| `fetchLatestRelease()`                                                                                                               |     Yes      |      Yes      |
-| `setParser(Parser parser)`                                                                                                           |     Yes      |      Yes      |
-| `attachEventCallbacks(HTTPUpdateStartCB onStart, HTTPUpdateProgressCB onProgress, HTTPUpdateEndCB onEnd, HTTPUpdateErrorCB onError)` |     Yes      |      Yes      |
-| `setDownloadURL(const String& endpoint, std::vector<Header> headers = {})`                                                           |     Yes      |      Yes      |
-| `setCurrentVersion(const String& currentVersion)`                                                                                    |     Yes      |      Yes      |
-| `getCurrentVersion() const`                                                                                                          |     Yes      |      Yes      |
-| `isNewVersion(const String& release)`                                                                                                |     Yes      |      Yes      |
-| `isUpToDate(const String& release)`                                                                                                  |     Yes      |      Yes      |
-| `setCredentials(const String& projectId, const String& apiKey)`                                                                      |     Yes      |      No       |
-| `setBaseURL(const String& url)`                                                                                                      |     Yes      |      No       |
-| `setReleaseURL(const String& endpoint, const std::vector<Header> headers = {})`                                                      |      No      |      Yes      |
-
 ### Quick Start (VoyagerOTA)
 
 > [!IMPORTANT]
