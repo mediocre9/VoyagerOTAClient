@@ -1,26 +1,21 @@
 # VoyagerOTAClient
+[![License](https://img.shields.io/github/license/mediocre9/voyagerota-core?color=0891B2)](LICENSE)
+[![SDK](https://img.shields.io/github/v/release/mediocre9/VoyagerOTAClient?label=SDK%20Latest%20Release\&color=008000)](https://github.com/mediocre9/VoyagerOTAClient/releases/latest)
 
-A semver based OTA client helper library for the VoyagerOTA platform. Supports GitHub releases and any custom JSON backends via custom parsers for ESP32.
-
-## Features
-
-- [x] Semver based version comparison
-- [x] VoyagerOTA platform integration
-- [x] Custom parser support for any JSON backend
-
----
+> A semver-based OTA client SDK for the <a href="https://github.com/mediocre9/voyagerota-core">VoyagerOTA</a>. That also supports structured way for GitHub Releases and custom JSON backend for ESP32 OTA.
 
 ## Getting Started
 
 ### Quick Start (VoyagerOTA)
 
-> [!IMPORTANT]
->
-> 1. The `__USE_STAGING_CHANNEL__` must be declared at the top either as true or false. As this compile time flag is required only for VoyagerOTA platform.
-> 2. Firmware uploaded to VoyagerOTA must be built with `__USE_STAGING_CHANNEL__` false. Staging compiled builds will be rejected by the VoyagerOTA platform.
-> 3. The library uses staging and production channels. Production builds first go to the **staging** channel for testing.
-> 4. On your local device, you can temporarily set `__USE_STAGING_CHANNEL__` true to fetch the **staging** release.
-> 5. After testing, promote the release to **production** to make it available to all devices.
+> For VoyagerOTA, define `__USE_STAGING_CHANNEL__` as `true` or `false` before including `VoyagerOTAClient.h`. This macro determines
+> which release channel the OTA client uses when fetching release metadata.
+> When `__USE_STAGING_CHANNEL__` is set to `true`, the client fetches the latest release from the staging channel, which is for
+> testing and development. When set to `false`, it uses the production channel, which is for production devices.
+> 
+> **Kindly do note that the firmware compiled with `__USE_STAGING_CHANNEL__` set to `true` is identified as a staging build by
+> VoyagerOTA and will be rejected during the production build inspection process. Therefore, always set `__USE_STAGING_CHANNEL__` to
+> `false` before uploading a production firmware binary to the VoyagerOTA platform.**
 
 ```cpp
 
@@ -67,202 +62,38 @@ void setup() {
 void loop() {}
 ```
 
----
-
 ## Advanced Mode
 
-> [!NOTE]
-> `__ENABLE_ADVANCED_MODE__` compile time flag must be set to `true` to enable custom backend support with parsers for integration with any backend.
-> **All custom payload models must extend BaseModel.**
-> Each model inherits the following required fields from BaseModel:
->
-> - _version_ - the release version string used for semver comparison.
-> - _downloadURL_ - the URL of the firmware binary to download.
->
-> **Voyager-specific features are disabled in this mode!!!**
-
-### 1. Custom OTA Backend Support Example
-
-```cpp
-// required to enable more manual settings and disable voyager related features....
-#define __ENABLE_ADVANCED_MODE__ true
-#define CURRENT_FIRMWARE_VERSION "1.0.0"
-
-#include <VoyagerOTAClient.h>
-#include <ArduinoJson.hpp>
-
-void connectToWifi() {
-    WiFi.begin("SSID", "PASSWORD");
-    while (WiFi.status() != WL_CONNECTED) {
-        Serial.print(".");
-        delay(50);
-    }
-    Serial.println("Connected to Internet");
-}
-
-struct CustomModel : public Voyager::BaseModel {
-    String description;
-    int statusCode;
-
-    explicit CustomModel(String version, String downloadUrl, String desc, int code)
-        : BaseModel(version, downloadUrl), description(desc), statusCode(code) {}
-};
-
-class CustomParser : public Voyager::IParser<Voyager::HTTPResponseData, CustomModel> {
-public:
-    std::optional<CustomModel> parse(Voyager::HTTPResponseData responseData, int statusCode) override {
-        ArduinoJson::JsonDocument document;
-        ArduinoJson::DeserializationError error = ArduinoJson::deserializeJson(document, responseData);
-
-        if (error) {
-            Serial.println("JSON parsing failed");
-            return std::nullopt;
-        }
-
-        if (statusCode != HTTP_CODE_OK) {
-            return std::nullopt;
-        }
-
-        CustomModel payload(document["version"],
-                            document["downloadUrl"],
-                            document["description"],
-                            statusCode);
-
-        return payload;
-    }
-};
-
-void setup() {
-    Serial.begin(9600);
-    connectToWifi();
-    auto parser = std::make_unique<CustomParser>();
-    Voyager::OTA<Voyager::HTTPResponseData, CustomModel> ota(CURRENT_FIRMWARE_VERSION, std::move(parser));
-
-    ota.setReleaseURL("https://your-custom-backend/releases/latest");
-    auto release = ota.fetchLatestRelease();
-    if (release && ota.isNewVersion(release->version)) {
-        Serial.println(release->downloadURL);
-        Serial.println(release->description);
-        ota.performUpdate();
-    }
-}
-
-void loop() {}
-```
-
-### 2. Github Release OTA Example
+Enable advanced mode for custom OTA backend support:
 
 ```cpp
 #define __ENABLE_ADVANCED_MODE__ true
-#define CURRENT_FIRMWARE_VERSION "1.0.0"
 
 #include <VoyagerOTAClient.h>
-#include <WiFi.h>
-
-using namespace Voyager;
-
-void connectToWifi() {
-    WiFi.begin("SSID", "PASSWORD");
-    while (WiFi.status() != WL_CONNECTED) {
-        Serial.print(".");
-        delay(50);
-    }
-    Serial.println("Connected to Internet");
-}
-
-struct GithubReleaseModel : public BaseModel {
-    String name;
-    String publishedAt;
-    int size;
-    int statusCode;
-
-    explicit GithubReleaseModel(String version, String downloadURL, String publishedAt, String name, int size, int statusCode)
-        : BaseModel(version, downloadURL) {
-        this->name = name;
-        this->publishedAt = publishedAt;
-        this->size = size;
-        this->statusCode = statusCode;
-    }
-};
-
-class GithubJSONParser : public Voyager::IParser<Voyager::HTTPResponseData, GithubReleaseModel> {
-public:
-    std::optional<GithubReleaseModel> parse(Voyager::HTTPResponseData responseData, int statusCode) override {
-        JsonDocument document;
-        DeserializationError error = deserializeJson(document, responseData);
-
-        if (error) {
-            Serial.println("JSON parsing failed");
-            return std::nullopt;
-        }
-
-        if (statusCode != HTTP_CODE_OK) {
-            return std::nullopt;
-        }
-
-        GithubReleaseModel payload(
-            document[0]["tag_name"],
-            document[0]["assets"][0]["url"],
-            document[0]["published_at"],
-            document[0]["name"],
-            document[0]["assets"][0]["size"].template as<int>(),
-            statusCode);
-
-        return payload;
-    }
-};
-
-void setup() {
-    Serial.begin(9600);
-    connectToWifi();
-
-    auto parser = std::make_unique<GithubJSONParser>();
-    OTA<HTTPResponseData, GithubReleaseModel> ota(CURRENT_FIRMWARE_VERSION, std::move(parser));
-
-    // https://docs.github.com/en/rest/releases/releases?apiVersion=2022-11-28#:~:text=GET-,/repos/%7Bowner%7D/%7Brepo%7D/releases,-cURL
-    std::vector<Header> releaseHeaders = {
-        {"Authorization", "Bearer your-github-token"},
-        {"X-GitHub-Api-Version", "2022-11-28"},
-        {"Accept", "application/vnd.github+json"},
-    };
-
-    // replace with your github username and repo.......
-    ota.setReleaseURL("https://api.github.com/repos/{username}/{repo-name}/releases");
-
-    Serial.println("OTA Started....");
-
-    auto release = ota.fetchLatestRelease();
-
-    if (release && ota.isNewVersion(release->version)) {
-        Serial.println("New version available: " + release->version);
-        Serial.println("Release Name: " + release->name);
-        Serial.println("Release Date: " + release->publishedAt);
-
-        std::vector<Header> downloadHeaders = {
-            {"Authorization", "Bearer your-github-token..."},
-            {"X-GitHub-Api-Version", "2022-11-28"},
-            {"Accept", "application/octet-stream"},
-        };
-
-        ota.setDownloadURL(release->downloadURL, downloadHeaders);
-        ota.performUpdate();
-    } else {
-        Serial.println("No updates available yet!");
-    }
-}
-
-void loop() {}
 ```
 
----
+All custom payload models must extend `Voyager::BaseModel`.
+
+Each model inherits:
+
+* `version` release used for semver comparison.
+* `downloadURL` of the firmware binary.
+
+**Voyager-specific features are disabled in advanced mode.**
+
+## Examples
+
+* [VoyagerOTA Example](https://github.com/mediocre9/VoyagerOTAClient/blob/main/examples/VoyagerOTA/VoyagerOTA.ino)
+* [GitHub OTA Example](https://github.com/mediocre9/VoyagerOTAClient/blob/main/examples/GithubOTA/GithubOTA.ino) - (Advanced Mode)
+* [Custom Backend Example](https://github.com/mediocre9/VoyagerOTAClient/blob/main/examples/CustomOTA/CustomOTA.ino) - (Advanced Mode)
 
 ## Requirements
 
-- C++17 or higher
-- ArduinoJson library version 7.0 or above
-- [cpp-semver](http://github.com/z4kn4fein/cpp-semver) - v0.4.0
-- [HTTPUpdate](https://github.com/espressif/arduino-esp32/tree/master/libraries/Update) - v3.0.7
+* C++17 or higher
+* [ArduinoJson](https://arduinojson.org/) version 7.0 or above
+* [cpp-semver](http://github.com/z4kn4fein/cpp-semver) v0.4.0
+* [HTTPUpdate](https://github.com/espressif/arduino-esp32/tree/master/libraries/Update) v3.0.7
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/mediocre9/VoyagerOTAClient/blob/main/LICENSE) for details.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/mediocre9/VoyagerOTAClient/blob/main/LICENSE) file for details.
