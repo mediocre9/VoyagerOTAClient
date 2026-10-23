@@ -54,9 +54,9 @@
   #error VoyagerOTAClient requires the ArduinoJson library version 7.0 or above.
 #endif
 
-#define VOYAGER_OTA_CLIENT_VERSION "5.0.0"
+#define VOYAGER_OTA_CLIENT_VERSION "5.1.0"
 #define VOYAGER_OTA_CLIENT_VERSION_MAJOR 5
-#define VOYAGER_OTA_CLIENT_VERSION_MINOR 0
+#define VOYAGER_OTA_CLIENT_VERSION_MINOR 1
 #define VOYAGER_OTA_CLIENT_VERSION_PATCH 0
 
 // !Do NOT change....For Platform's Backend use only......
@@ -258,9 +258,12 @@ template <typename T_ResponseData, typename T_PayloadModel>
 void Voyager::OTA<T_ResponseData, T_PayloadModel>::setCredentials(const String& projectId, const String& apiKey) {
     _projectId = projectId;
     _apiKey = apiKey;
+
+    const String userAgent = ("voyager-ota-client-sdk/" + String(VOYAGER_OTA_CLIENT_VERSION));
     _setVoyagerHeaders({
         {__VoyagerApi__::Headers::Keys::X_PROJECT_ID, _projectId.c_str()},
         {__VoyagerApi__::Headers::Keys::X_API_KEY, _apiKey.c_str()},
+        {__VoyagerApi__::Headers::Keys::USER_AGENT, userAgent.c_str()},
     });
 }
 
