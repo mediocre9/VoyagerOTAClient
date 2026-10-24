@@ -61,7 +61,7 @@
 
 // !Do NOT change....For Platform's Backend use only......
 #if defined(__ENABLE_ADVANCED_MODE__) && (__ENABLE_ADVANCED_MODE__ == true)
-  #pragma message("VoyagerOTA Advanced Mode Enabled! All VoyagerOTA related features has been disabled!")
+  #pragma message("VoyagerOTA Advanced Mode Enabled! All VoyagerOTA related features has been disabled!");
 #else
   #if !defined(__USE_STAGING_CHANNEL__) && (__USE_STAGING_CHANNEL__ == false)
     #error __USE_STAGING_CHANNEL__ MACRO is missing. Please define at the top of the code either as true or false.
@@ -70,7 +70,7 @@
     //   https://stackoverflow.com/questions/31637626/whats-the-usecase-of-gccs-used-attribute#:~:text=If%20you%20declare%20a%20global%20variable%20or%20function%20that%20is%20unused%2C%20gcc%20will%20optimized%20it%20out%20(with%20warning)%2C%20but%20if%20you%20declared%20the%20global%20variable%20or%20the%20function%20with%20%27__attribute__((used))%27%2C%20gcc%20will%20include%20it%20in%20object%20file%20(and%20linked%20executable).
   #if __USE_STAGING_CHANNEL__
 const char* ___VYGR_STAGING___ __attribute__((used)) = "$2y$10$BsbB6jZbeQKLLnsnvGRJfOmGuG2Co0/LEDR4xO0Khnlvvm57c6Tai";
-    #pragma message("[VoyagerOTA-WARNING]: Do not Upload STAGING enabled builds on VoyagerOTA Platform.");
+    #pragma message("[VoyagerOTA-WARNING]: Do not Upload STAGING enabled builds on VoyagerOTA Platform.")
   #else
 const char* ___VYGR_PRODUCTION___ __attribute__((used)) = "$2y$10$DX0bqDwfQtWJkBPgiXHVqOcbjOoX5i9cRHxSTgK3xgjTHpy5EGNbO";
   #endif
@@ -228,11 +228,12 @@ namespace Voyager {
 
     namespace HttpClientHelper {
         inline void addHttpClientHeaders(HTTPClient& client, const std::vector<Voyager::Header> headers) {
-            for (const auto [type, value] : headers) {
+            for (const auto& [type, value] : headers) {
                 if (!client.hasHeader(type)) {
                     client.addHeader(type, value);
                 }
             }
+            client.setUserAgent("voyager-ota-client-sdk/" VOYAGER_OTA_CLIENT_VERSION);
         }
     }  // namespace HttpClientHelper
 }  // namespace Voyager
@@ -259,11 +260,11 @@ void Voyager::OTA<T_ResponseData, T_PayloadModel>::setCredentials(const String& 
     _projectId = projectId;
     _apiKey = apiKey;
 
-    const String userAgent = ("voyager-ota-client-sdk/" + String(VOYAGER_OTA_CLIENT_VERSION));
     _setVoyagerHeaders({
         {__VoyagerApi__::Headers::Keys::X_PROJECT_ID, _projectId.c_str()},
         {__VoyagerApi__::Headers::Keys::X_API_KEY, _apiKey.c_str()},
-        {__VoyagerApi__::Headers::Keys::USER_AGENT, userAgent.c_str()},
+        {__VoyagerApi__::Headers::Keys::X_FIRMWARE_VERSION, _currentVersion.c_str()},
+        {__VoyagerApi__::Headers::Keys::X_CHIP_MODEL, ESP.getChipModel()},
     });
 }
 
@@ -370,7 +371,6 @@ std::optional<T_PayloadModel> Voyager::OTA<T_ResponseData, T_PayloadModel>::fetc
 #else
     std::vector<Header> headers = _voyagerHeaders;
 #endif
-
     HttpClientHelper::addHttpClientHeaders(client, headers);
 
     int statusCode = client.GET();
@@ -412,12 +412,12 @@ std::optional<Voyager::VoyagerReleaseModel> Voyager::VoyagerJSONParser::parse(Vo
 
 template <typename T_ResponseData, typename T_PayloadModel>
 void Voyager::OTA<T_ResponseData, T_PayloadModel>::performUpdate() {
-    HTTPClient client;
     if (_downloadURL.isEmpty()) {
         Serial.print("Download URL is required!");
         return;
     }
 
+    HTTPClient client;
     bool isOK = client.begin(_downloadURL);
 
     // TODO Add error log message.....
