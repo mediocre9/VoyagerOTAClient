@@ -4,8 +4,9 @@
 // its own token (stored in NVS) and update results are reported back.
 #define __USE_STAGING_CHANNEL__ false
 #define CURRENT_FIRMWARE_VERSION "1.0.0"
-// optional: if a new firmware crashes 3 boots in a row before reaching the
-// server, the device boots the previous firmware again and reports it....
+// optional: if a new firmware crashes (panic / watchdog) 3 times in a row
+// before reaching the server, the device boots the previous firmware again
+// and reports it. Power cuts and manual resets don't count....
 #define __VOYAGER_BOOT_GUARD__ true
 
 #include <VoyagerOTAClient.h>

@@ -56,6 +56,7 @@
   #include "ApiConstants.h"
   #if defined(__VOYAGER_BOOT_GUARD__) && (__VOYAGER_BOOT_GUARD__ == true)
     #include <Update.h>
+    #include <esp_system.h>
   #endif
 #endif
 
@@ -862,29 +863,39 @@ void Voyager::OTA<T_ResponseData, T_PayloadModel>::guardBoot() {
         return;
     }
 
-    // counted before the app gets a chance to crash, cleared once the update is reported....
-    uint8_t attempts = preferences.getUChar(Voyager::DeviceIdentity::KEY_BOOT_ATTEMPTS, 0) + 1;
-    preferences.putUChar(Voyager::DeviceIdentity::KEY_BOOT_ATTEMPTS, attempts);
-
-    if (attempts <= VOYAGER_BOOT_GUARD_ATTEMPTS) {
+    // only crashes count: a power cut, a manual reset or no Wi-Fi must never roll back a healthy firmware....
+    esp_reset_reason_t reason = esp_reset_reason();
+    bool isCrash = reason == ESP_RST_PANIC || reason == ESP_RST_INT_WDT || reason == ESP_RST_TASK_WDT || reason == ESP_RST_WDT;
+    if (!isCrash) {
+        preferences.remove(Voyager::DeviceIdentity::KEY_BOOT_ATTEMPTS);
         preferences.end();
         return;
     }
 
-    if (!Update.canRollBack()) {
-        Serial.printf("[VoyagerOTA] v%s failed %u boots but there is no previous firmware to go back to.\n", _currentVersion.c_str(), attempts - 1);
+    // crashes in a row since this firmware was flashed, cleared once the update is reported....
+    uint8_t crashes = preferences.getUChar(Voyager::DeviceIdentity::KEY_BOOT_ATTEMPTS, 0);
+    if (crashes < UINT8_MAX)
+        crashes++;
+    preferences.putUChar(Voyager::DeviceIdentity::KEY_BOOT_ATTEMPTS, crashes);
+
+    if (crashes < VOYAGER_BOOT_GUARD_ATTEMPTS) {
         preferences.end();
         return;
     }
 
-    Serial.printf("[VoyagerOTA] v%s failed %u boots, going back to the previous firmware.\n", _currentVersion.c_str(), attempts - 1);
+    // marks the previous OTA partition as the boot one, nothing is written unless that worked....
+    if (!Update.canRollBack() || !Update.rollBack()) {
+        Serial.printf("[VoyagerOTA] v%s crashed %u times in a row but there is no previous firmware to go back to.\n", _currentVersion.c_str(), static_cast<unsigned>(crashes));
+        preferences.end();
+        return;
+    }
+
+    Serial.printf("[VoyagerOTA] v%s crashed %u times in a row, going back to the previous firmware.\n", _currentVersion.c_str(), static_cast<unsigned>(crashes));
     preferences.putBool(Voyager::DeviceIdentity::KEY_ROLLED_BACK, true);
     preferences.putString(Voyager::DeviceIdentity::KEY_SKIP_VERSION, toVersion);
     preferences.remove(Voyager::DeviceIdentity::KEY_BOOT_ATTEMPTS);
     preferences.end();
-    if (Update.rollBack()) {
-        ESP.restart();
-    }
+    ESP.restart();
   #endif
 }
 
@@ -934,7 +945,7 @@ void Voyager::OTA<T_ResponseData, T_PayloadModel>::_reportPendingUpdate() {
     bool isUpdated = _currentVersion == toVersion;
     String message = isUpdated ? String() : "Booted v" + _currentVersion + " instead of v" + toVersion + ", the update did not take effect.";
     if (!isUpdated && _isBootGuardRolledBack) {
-        message = "v" + toVersion + " kept crashing on boot, the device went back to v" + _currentVersion + ".";
+        message = "v" + toVersion + " kept crashing, the device went back to v" + _currentVersion + ".";
     }
 
     if (_sendReport(isUpdated ? "success" : "failed", releaseId, fromVersion, toVersion, 0, message)) {
