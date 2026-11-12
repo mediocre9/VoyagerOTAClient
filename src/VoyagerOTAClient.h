@@ -835,8 +835,16 @@ bool Voyager::OTA<T_ResponseData, T_PayloadModel>::_sendReport(const char* statu
 
 template <typename T_ResponseData, typename T_PayloadModel>
 bool Voyager::OTA<T_ResponseData, T_PayloadModel>::shouldUpdate(const T_PayloadModel& release) {
+  #if __USE_STAGING_CHANNEL__
+    // a staging build is flashed by hand, the release is the uploaded production build of the same
+    // version: install it so the exact binary gets tested and reported. Afterwards the device runs
+    // a production build and follows the production channel, so this can't loop....
+    if (release.version == _currentVersion)
+        return true;
+  #else
     if (release.version == _currentVersion)
         return false;
+  #endif
     // the boot guard already watched this one crash, don't download it again....
     if (!_skippedVersion.isEmpty() && release.version == _skippedVersion)
         return false;
