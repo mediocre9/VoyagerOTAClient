@@ -578,7 +578,7 @@ void Voyager::OTA<T_ResponseData, T_PayloadModel>::_otaUpdateHandler(HTTPClient&
         } break;
 
         case HTTP_UPDATE_FAILED: {
-            Serial.printf("VOYAGER_OTA HTTP_UPDATE_FAILED : %s  ERROR CODE :  %d", httpUpdate.getLastErrorString(), httpUpdate.getLastError());
+            Serial.printf("VOYAGER_OTA HTTP_UPDATE_FAILED : %s  ERROR CODE :  %d\n", httpUpdate.getLastErrorString().c_str(), httpUpdate.getLastError());
         } break;
 
         default: {
