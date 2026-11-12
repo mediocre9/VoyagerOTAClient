@@ -64,9 +64,9 @@
   #error VoyagerOTAClient requires the ArduinoJson library version 7.0 or above.
 #endif
 
-#define VOYAGER_OTA_CLIENT_VERSION "6.1.0"
+#define VOYAGER_OTA_CLIENT_VERSION "6.0.0"
 #define VOYAGER_OTA_CLIENT_VERSION_MAJOR 6
-#define VOYAGER_OTA_CLIENT_VERSION_MINOR 1
+#define VOYAGER_OTA_CLIENT_VERSION_MINOR 0
 #define VOYAGER_OTA_CLIENT_VERSION_PATCH 0
 
 // !Do NOT change....For Platform's Backend use only......
