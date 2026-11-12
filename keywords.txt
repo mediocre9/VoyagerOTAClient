@@ -17,6 +17,9 @@ setReleaseURL           KEYWORD2
 setBaseURL  	        KEYWORD2
 isNewVersion	        KEYWORD2
 isUpToDate  	        KEYWORD2
+shouldUpdate	        KEYWORD2
+guardBoot	        KEYWORD2
+isRollback	        KEYWORD2
 attachEventCallbacks    KEYWORD2
 registerDevice	        KEYWORD2
 getDeviceStatus	        KEYWORD2

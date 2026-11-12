@@ -54,15 +54,18 @@
     #include <esp_system.h>
   #endif
   #include "ApiConstants.h"
+  #if defined(__VOYAGER_BOOT_GUARD__) && (__VOYAGER_BOOT_GUARD__ == true)
+    #include <Update.h>
+  #endif
 #endif
 
 #if !defined(ARDUINOJSON_VERSION_MAJOR) || ARDUINOJSON_VERSION_MAJOR < 7
   #error VoyagerOTAClient requires the ArduinoJson library version 7.0 or above.
 #endif
 
-#define VOYAGER_OTA_CLIENT_VERSION "6.0.0"
+#define VOYAGER_OTA_CLIENT_VERSION "6.1.0"
 #define VOYAGER_OTA_CLIENT_VERSION_MAJOR 6
-#define VOYAGER_OTA_CLIENT_VERSION_MINOR 0
+#define VOYAGER_OTA_CLIENT_VERSION_MINOR 1
 #define VOYAGER_OTA_CLIENT_VERSION_PATCH 0
 
 // !Do NOT change....For Platform's Backend use only......
@@ -79,6 +82,19 @@ const char* ___VYGR_STAGING___ __attribute__((used)) = "$2y$10$BsbB6jZbeQKLLnsnv
     #pragma message("[VoyagerOTA-WARNING]: Do not Upload STAGING enabled builds on VoyagerOTA Platform.")
   #else
 const char* ___VYGR_PRODUCTION___ __attribute__((used)) = "$2y$10$DX0bqDwfQtWJkBPgiXHVqOcbjOoX5i9cRHxSTgK3xgjTHpy5EGNbO";
+  #endif
+
+  // the platform reads this back from the uploaded .bin to make sure it was built for the release's version....
+  #if defined(CURRENT_FIRMWARE_VERSION)
+const char* ___VYGR_FIRMWARE_VERSION___ __attribute__((used)) = "VYGR_FW_VERSION:" CURRENT_FIRMWARE_VERSION ";";
+  #endif
+
+  // opt-in: go back to the previous firmware when a new one keeps crashing before it reaches the server....
+  #if !defined(__VOYAGER_BOOT_GUARD__)
+    #define __VOYAGER_BOOT_GUARD__ false
+  #endif
+  #if !defined(VOYAGER_BOOT_GUARD_ATTEMPTS)
+    #define VOYAGER_BOOT_GUARD_ATTEMPTS 3
   #endif
 #endif
 
@@ -140,6 +156,8 @@ namespace Voyager {
         int size;
         String prettySize;
         String message;
+        // the server marked the release this device runs as revoked and is sending it back to an older one....
+        bool isRollback = false;
 
         explicit VoyagerReleaseModel(String version, String releaseId, String changeLog, String releasedDate, String status, int statusCode, String hash, int size, String prettySize, String downloadURL, String message = String()) : BaseModel(version, downloadURL) {
             this->releaseId = releaseId;
@@ -235,6 +253,13 @@ namespace Voyager {
 
         [[nodiscard]] bool isUpToDate(const String& release);
 
+#if !__ENABLE_ADVANCED_MODE__
+        [[nodiscard]] bool shouldUpdate(const T_PayloadModel& release);
+
+        // call it first thing in setup(), before Wi-Fi....
+        void guardBoot();
+#endif
+
         void performUpdate() override;
 
         [[nodiscard]] std::optional<T_PayloadModel> fetchLatestRelease() override;
@@ -285,6 +310,8 @@ namespace Voyager {
         void _storePendingUpdate();
         void _clearPendingUpdate();
         void _reportPendingUpdate();
+        bool _isBootGuardRolledBack = false;
+        String _skippedVersion;
         bool _sendReport(const char* status, const String& releaseId, const String& fromVersion, const String& toVersion, int errorCode, const String& message);
 #endif
     };
@@ -511,6 +538,7 @@ std::optional<Voyager::VoyagerReleaseModel> Voyager::VoyagerJSONParser::parse(Vo
                                          document["release"]["artifact"]["size"].as<int>(),
                                          document["release"]["artifact"]["prettySize"],
                                          document["release"]["artifact"]["downloadURL"]);
+    payload.isRollback = document["release"]["rollback"].as<bool>();
 
     return payload;
 }
@@ -606,6 +634,9 @@ namespace Voyager::DeviceIdentity {
     constexpr const char* KEY_PENDING_RELEASE = "p_rel";
     constexpr const char* KEY_PENDING_FROM = "p_from";
     constexpr const char* KEY_PENDING_TO = "p_to";
+    constexpr const char* KEY_BOOT_ATTEMPTS = "p_boots";
+    constexpr const char* KEY_ROLLED_BACK = "p_rolled";
+    constexpr const char* KEY_SKIP_VERSION = "skip_ver";
 
     inline String readHardwareId() {
         uint64_t mac = ESP.getEfuseMac();
@@ -802,6 +833,62 @@ bool Voyager::OTA<T_ResponseData, T_PayloadModel>::_sendReport(const char* statu
 }
 
 template <typename T_ResponseData, typename T_PayloadModel>
+bool Voyager::OTA<T_ResponseData, T_PayloadModel>::shouldUpdate(const T_PayloadModel& release) {
+    if (release.version == _currentVersion)
+        return false;
+    // the boot guard already watched this one crash, don't download it again....
+    if (!_skippedVersion.isEmpty() && release.version == _skippedVersion)
+        return false;
+    if constexpr (std::is_same_v<T_PayloadModel, Voyager::VoyagerReleaseModel>) {
+        if (release.isRollback)
+            return true;
+    }
+    return isNewVersion(release.version);
+}
+
+template <typename T_ResponseData, typename T_PayloadModel>
+void Voyager::OTA<T_ResponseData, T_PayloadModel>::guardBoot() {
+  #if __VOYAGER_BOOT_GUARD__
+    Preferences preferences;
+    preferences.begin(Voyager::DeviceIdentity::NVS_NAMESPACE, false);
+    String toVersion = preferences.getString(Voyager::DeviceIdentity::KEY_PENDING_TO, "");
+    _skippedVersion = preferences.getString(Voyager::DeviceIdentity::KEY_SKIP_VERSION, "");
+
+    // nothing was flashed, or we are back on the old firmware already....
+    if (toVersion.isEmpty() || toVersion != _currentVersion) {
+        _isBootGuardRolledBack = preferences.getBool(Voyager::DeviceIdentity::KEY_ROLLED_BACK, false);
+        preferences.remove(Voyager::DeviceIdentity::KEY_BOOT_ATTEMPTS);
+        preferences.end();
+        return;
+    }
+
+    // counted before the app gets a chance to crash, cleared once the update is reported....
+    uint8_t attempts = preferences.getUChar(Voyager::DeviceIdentity::KEY_BOOT_ATTEMPTS, 0) + 1;
+    preferences.putUChar(Voyager::DeviceIdentity::KEY_BOOT_ATTEMPTS, attempts);
+
+    if (attempts <= VOYAGER_BOOT_GUARD_ATTEMPTS) {
+        preferences.end();
+        return;
+    }
+
+    if (!Update.canRollBack()) {
+        Serial.printf("[VoyagerOTA] v%s failed %u boots but there is no previous firmware to go back to.\n", _currentVersion.c_str(), attempts - 1);
+        preferences.end();
+        return;
+    }
+
+    Serial.printf("[VoyagerOTA] v%s failed %u boots, going back to the previous firmware.\n", _currentVersion.c_str(), attempts - 1);
+    preferences.putBool(Voyager::DeviceIdentity::KEY_ROLLED_BACK, true);
+    preferences.putString(Voyager::DeviceIdentity::KEY_SKIP_VERSION, toVersion);
+    preferences.remove(Voyager::DeviceIdentity::KEY_BOOT_ATTEMPTS);
+    preferences.end();
+    if (Update.rollBack()) {
+        ESP.restart();
+    }
+  #endif
+}
+
+template <typename T_ResponseData, typename T_PayloadModel>
 void Voyager::OTA<T_ResponseData, T_PayloadModel>::_storePendingUpdate() {
     if (_lastReleaseVersion.isEmpty())
         return;
@@ -821,6 +908,8 @@ void Voyager::OTA<T_ResponseData, T_PayloadModel>::_clearPendingUpdate() {
     preferences.remove(Voyager::DeviceIdentity::KEY_PENDING_RELEASE);
     preferences.remove(Voyager::DeviceIdentity::KEY_PENDING_FROM);
     preferences.remove(Voyager::DeviceIdentity::KEY_PENDING_TO);
+    preferences.remove(Voyager::DeviceIdentity::KEY_BOOT_ATTEMPTS);
+    preferences.remove(Voyager::DeviceIdentity::KEY_ROLLED_BACK);
     preferences.end();
 }
 
@@ -844,6 +933,9 @@ void Voyager::OTA<T_ResponseData, T_PayloadModel>::_reportPendingUpdate() {
 
     bool isUpdated = _currentVersion == toVersion;
     String message = isUpdated ? String() : "Booted v" + _currentVersion + " instead of v" + toVersion + ", the update did not take effect.";
+    if (!isUpdated && _isBootGuardRolledBack) {
+        message = "v" + toVersion + " kept crashing on boot, the device went back to v" + _currentVersion + ".";
+    }
 
     if (_sendReport(isUpdated ? "success" : "failed", releaseId, fromVersion, toVersion, 0, message)) {
         _clearPendingUpdate();

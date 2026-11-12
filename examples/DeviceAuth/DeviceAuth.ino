@@ -4,6 +4,9 @@
 // its own token (stored in NVS) and update results are reported back.
 #define __USE_STAGING_CHANNEL__ false
 #define CURRENT_FIRMWARE_VERSION "1.0.0"
+// optional: if a new firmware crashes 3 boots in a row before reaching the
+// server, the device boots the previous firmware again and reports it....
+#define __VOYAGER_BOOT_GUARD__ true
 
 #include <VoyagerOTAClient.h>
 #include <WiFi.h>
@@ -22,6 +25,7 @@ void connectToWifi() {
 
 void setup() {
     Serial.begin(115200);
+    ota.guardBoot();
     connectToWifi();
 
     ota.setCredentials("voyager-project-id-here....", "voyager-api-key-here...");
@@ -34,8 +38,9 @@ void loop() {
     // registers automatically, only approved devices get a release back....
     auto release = ota.fetchLatestRelease();
 
-    if (release && ota.isNewVersion(release->version)) {
-        Serial.println("Updating to v" + release->version);
+    // newer, or an older one when the release this device runs was revoked....
+    if (release && ota.shouldUpdate(*release)) {
+        Serial.println((release->isRollback ? "Rolling back to v" : "Updating to v") + release->version);
         ota.setDownloadURL(release->downloadURL);
         ota.performUpdate();  // failures are reported right away, success after the reboot
     } else if (ota.getDeviceStatus() == DeviceStatus::PENDING) {
