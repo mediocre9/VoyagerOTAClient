@@ -4,6 +4,7 @@ IParser	            KEYWORD1
 VoyagerJSONParser	KEYWORD1
 VoyagerReleaseModel	KEYWORD1
 BaseModel	        KEYWORD1
+DeviceStatus	    KEYWORD1
 
 # For Methods...
 setCurrentVersion	    KEYWORD2
@@ -17,3 +18,14 @@ setBaseURL  	        KEYWORD2
 isNewVersion	        KEYWORD2
 isUpToDate  	        KEYWORD2
 attachEventCallbacks    KEYWORD2
+registerDevice	        KEYWORD2
+getDeviceStatus	        KEYWORD2
+getHardwareId	        KEYWORD2
+resetDeviceIdentity	    KEYWORD2
+
+# DeviceStatus values...
+UNREGISTERED	LITERAL1
+PENDING	        LITERAL1
+ACTIVE	        LITERAL1
+REVOKED	        LITERAL1
+REJECTED	    LITERAL1
