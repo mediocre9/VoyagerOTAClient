@@ -505,6 +505,12 @@ std::optional<T_PayloadModel> Voyager::OTA<T_ResponseData, T_PayloadModel>::fetc
         if (release) {
             _lastReleaseId = release->releaseId;
             _lastReleaseVersion = release->version;
+  #if __USE_STAGING_CHANNEL__
+            // isNewVersion() skips a release of the same version, which is what a staging board usually runs....
+            if (release->version == _currentVersion) {
+                Serial.printf("[VoyagerOTA] Staging release v%s has the same version as this staging build. Use ota.shouldUpdate(*release) to install and test it.\n", release->version.c_str());
+            }
+  #endif
         }
     }
     return release;
