@@ -500,6 +500,12 @@ std::optional<T_PayloadModel> Voyager::OTA<T_ResponseData, T_PayloadModel>::fetc
         return std::nullopt;
     }
 
+    // fair use: one check-in per device every 30s, the next normal check picks it up....
+    if (statusCode == HTTP_CODE_TOO_MANY_REQUESTS) {
+        Serial.println("[VoyagerOTA] Checking in too often, skipped. Check every 15 to 60 minutes in production.");
+        return std::nullopt;
+    }
+
     std::optional<T_PayloadModel> release = _parser->parse(responseData, statusCode);
     if constexpr (std::is_same_v<T_PayloadModel, Voyager::VoyagerReleaseModel>) {
         if (release) {
@@ -793,6 +799,11 @@ Voyager::DeviceStatus Voyager::OTA<T_ResponseData, T_PayloadModel>::registerDevi
         case HTTP_CODE_CONFLICT: {
             _deviceStatus = DeviceStatus::REJECTED;
             Serial.printf("[VoyagerOTA] Hardware id %s is claimed by another device. Remove it in the dashboard to re-add this one.\n", _hardwareId.c_str());
+        } break;
+
+        case HTTP_CODE_TOO_MANY_REQUESTS: {
+            _deviceStatus = DeviceStatus::ERROR;
+            Serial.printf("[VoyagerOTA] Device %s can't ask for access yet, too many devices are waiting in this project. Approve or remove some in the dashboard.\n", _hardwareId.c_str());
         } break;
 
         default: {
