@@ -801,6 +801,11 @@ Voyager::DeviceStatus Voyager::OTA<T_ResponseData, T_PayloadModel>::registerDevi
             Serial.printf("[VoyagerOTA] Hardware id %s is claimed by another device. Remove it in the dashboard to re-add this one.\n", _hardwareId.c_str());
         } break;
 
+        case HTTP_CODE_UNAUTHORIZED: {
+            _deviceStatus = DeviceStatus::ERROR;
+            Serial.println("[VoyagerOTA] Project credentials rejected. The project may have been deleted, or its API key changed.");
+        } break;
+
         case HTTP_CODE_TOO_MANY_REQUESTS: {
             _deviceStatus = DeviceStatus::ERROR;
             Serial.printf("[VoyagerOTA] Device %s can't ask for access yet, too many devices are waiting in this project. Approve or remove some in the dashboard.\n", _hardwareId.c_str());
